@@ -1,7 +1,6 @@
 const { readFileSync } = require('fs');
 const inputList = readFileSync(0).toString().split('\n').map(line => line.trim()).filter(Boolean); // STDIN_FILENO = 0
 
-
 const partition = (lower, upper, firstChar, lastChar, chars) => {
   const [head, ...rest] = chars;
 
@@ -32,14 +31,26 @@ const findSeat = (seatInfo) => {
   const [row, col] = [findRow(rowChars), findCol(colChars)];
   const seatId = row * 8 + col;
 
-  return [row, col, seatId];
+  return [seatId, row, col];
 }
 
 
 const seatAssignments = inputList.map(findSeat);
 
-seatAssignments.sort((first, second) => {
-  return first[2] < second[2] ? 1 : -1;
+seatAssignments.sort(([first], [second]) => {
+  return first < second ? -1 : 1;
 });
 
-console.log("Highest seatID:", seatAssignments[0][2]);
+const seatIds = new Set(seatAssignments.map(([seatId]) => seatId));
+const lowest = seatAssignments[0][0];
+const highest = seatAssignments[seatAssignments.length - 1][0];
+let missingSeats = [];
+
+for (let i = lowest; i < highest; i++) {
+  if (!seatIds.has(i)) {
+    missingSeats.push(i);
+  }
+}
+
+console.log("Highest seatID:", highest);
+console.log("Missing ids", missingSeats);
