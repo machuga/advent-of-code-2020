@@ -15,50 +15,73 @@ const OCCUPIED = '#';
 const EMPTY = 'L';
 const FLOOR = '.';
 
-const OCCUPIED_MAX = 4;
-const EMPTY_MAX = 8;
-// Game of life simulator...but with seats!
+const direction = {
+  NW: [-1, -1],
+  N:  [ 0, -1],
+  NE: [ 1, -1],
+  W:  [-1,  0],
+  E:  [ 1,  0],
+  SW: [-1,  1],
+  S:  [ 0,  1],
+  SE: [ 1,  1],
+};
 
-const isOccupied = (row, col, matrix) => {
-  const maxRows = matrix.length - 1;
-  const maxCols = matrix[0].length - 1;
+const directions = Object.keys(direction);
 
-  if (row < 0 || col < 0 || row > maxRows || col > maxCols) {
+const worldToString = (matrix) => matrix.map(row => row.join('')).join('\n');
+const countOccupiedStates = (matrix) => matrix.flat().filter(c => c === OCCUPIED);
+
+const maxRows = input.length - 1;
+const maxCols = input[0].length - 1;
+
+const searchForOccupiedInDirection = (matrix, currentRow, currentCol, direction, recurse = false) => {
+  const [rowOffset, colOffset] = direction;
+  const nextRow = currentRow + rowOffset;
+  const nextCol = currentCol + colOffset;
+  if (nextRow < 0 || nextCol < 0 || nextRow > maxRows || nextCol > maxCols) {
     return false;
   }
 
-  return matrix[row][col] === OCCUPIED;
+  if (matrix[nextRow][nextCol] === OCCUPIED) {
+    return true;
+  }
+
+  if (matrix[nextRow][nextCol] === EMPTY) {
+    return false;
+  }
+
+  if (recurse) {
+    return searchForOccupiedInDirection(matrix, nextRow, nextCol, direction, recurse);
+  }
+
+  return false;
 };
 
-const updateSeat = (state, occupiedNeighbors) => {
+const findOccupiedNeighbors = (oldMap, currentRow, currentCol, recurse = false) =>
+  directions
+    .map(d =>
+      searchForOccupiedInDirection(oldMap, currentRow, currentCol, direction[d], recurse)
+    )
+    .filter(Boolean)
+    .length
+
+const updateSeat = (state, occupiedNeighbors, comfort) => {
   switch (state) {
-    case OCCUPIED: return occupiedNeighbors >= OCCUPIED_MAX ? EMPTY : OCCUPIED;
+    case OCCUPIED: return occupiedNeighbors >= comfort ? EMPTY : OCCUPIED;
     case EMPTY: return occupiedNeighbors === 0 ? OCCUPIED : EMPTY;
     case FLOOR:
     default: return state;
   }
-}
+};
 
-const findOccupiedNeighbors = (oldMap, currentRow, currentCol) =>
-  [
-    isOccupied(currentRow-1, currentCol-1, oldMap),
-    isOccupied(currentRow-1, currentCol+0, oldMap),
-    isOccupied(currentRow-1, currentCol+1, oldMap),
-    isOccupied(currentRow+0, currentCol-1, oldMap),
-    isOccupied(currentRow+0, currentCol+1, oldMap),
-    isOccupied(currentRow+1, currentCol-1, oldMap),
-    isOccupied(currentRow+1, currentCol+0, oldMap),
-    isOccupied(currentRow+1, currentCol+1, oldMap),
-  ].filter(Boolean).length;
-
-const tick = (oldMap) => {
+const updateMap = (oldMap, occupiedMax = 4, searchDirectionUntilMatch = false) => {
   let changes = 0;
 
   const newMap =  oldMap.map((row, rowIndex) => {
     return row.map((value, colIndex) => {
-      const occupiedNeighbors = findOccupiedNeighbors(oldMap, rowIndex, colIndex);
+      const occupiedNeighbors = findOccupiedNeighbors(oldMap, rowIndex, colIndex, searchDirectionUntilMatch);
 
-      const newValue = updateSeat(value, occupiedNeighbors);
+      const newValue = updateSeat(value, occupiedNeighbors, occupiedMax);
 
       if (newValue !== value) {
         changes += 1;
@@ -71,18 +94,31 @@ const tick = (oldMap) => {
   return {
     newMap,
     changes
-  }
-};
-
-const worldToString = (matrix) => matrix.map(row => row.join('')).join('\n');
-const countOccupiedStates = (matrix) => matrix.flat().filter(c => c === OCCUPIED);
-
-let latestState = { newMap: input, changes: 1 };
-let count = 0;
-while(latestState.changes !== 0) {
-  latestState = tick(latestState.newMap);
-  count += 1;
+  };
 }
 
-console.log("Part 1: Occupied seats: ", countOccupiedStates(latestState.newMap).length, count);
+const findSeatEqualibrium = (oldMap, occupiedMax, searchDirectionUntilMatch = false, evolutionCount = 0) => {
+  let latestState = updateMap(oldMap, occupiedMax, searchDirectionUntilMatch);
+  evolutionCount += 1;
 
+  if (latestState.changes === 0) {
+    return { ...latestState, evolutionCount };
+  }
+
+  return findSeatEqualibrium(latestState.newMap, occupiedMax, searchDirectionUntilMatch, evolutionCount);
+}
+
+const partOne = () => {
+  const { newMap, changes, evolutionCount } = findSeatEqualibrium(input, 4);
+
+  console.log("Part 1: Occupied seats: ", countOccupiedStates(newMap).length, evolutionCount);
+}
+
+const partTwo = () => {
+  const { newMap, changes, evolutionCount } = findSeatEqualibrium(input, 5, true);
+
+  console.log("Part 2: Occupied seats: ", countOccupiedStates(newMap).length, evolutionCount);
+}
+
+partOne();
+partTwo();
