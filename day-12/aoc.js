@@ -32,6 +32,7 @@ const directionFromQuarter = (direction) => {
   }
 }
 
+
 const createNavigation = (x = 0, y = 0, direction = START_DIRECTION) => {
   const calculateDirection = (way, degrees) => {
     const value = (degrees / QUARTER);
@@ -53,23 +54,63 @@ const createNavigation = (x = 0, y = 0, direction = START_DIRECTION) => {
   const getState = () => ({ x, y, direction, directionReadable: directionFromDegrees(direction) });
 
   const move = (op, value) => {
-    //console.log('----- START MOVE -----');
-    //console.log("Starting state is", getState());
-    //console.log("I am about to move", op, value);
-    moveInDirection[op](value)
-    //console.log("Current state is", getState());
-    //console.log('----- END   MOVE -----\n\n');
+    moveInDirection[op](value);
   };
 
   return { move, getState };
-}
+};
 
 
 const moveForPart1 = (orders) => {
   const navigation = createNavigation();
 
   orders.forEach(([op, value]) => {
-    //console.log("I am going to do the following: ", op, value);
+    navigation.move(op, value);
+  })
+
+  return navigation.getState();
+};
+
+const createWaypointNavigation = (x = 0, y = 0) => {
+  let waypointX = 10;
+  let waypointY = -1
+
+  const calculateDirection = (way) => (degrees) => {
+    const signedDegrees = way === 'L' ? -degrees : degrees;
+    // Found off internet - thanks!
+    let angle = signedDegrees * Math.PI / 180;
+    const dx = Math.round(waypointX * Math.cos(angle) - waypointY * Math.sin(angle));
+    const dy = Math.round(waypointX * Math.sin(angle) + waypointY * Math.cos(angle));
+
+    waypointX = dx;
+    waypointY = dy;
+  };
+
+  const operations = {
+    N: (steps) => { waypointY -= steps },
+    S: (steps) => { waypointY += steps },
+    W: (steps) => { waypointX -= steps },
+    E: (steps) => { waypointX += steps },
+    F: (steps) => {
+      x = x + (waypointX * steps);
+      y = y + (waypointY * steps);
+    },
+    L: calculateDirection('L'),
+    R: calculateDirection('R'),
+  };
+
+  const getState = () => ({ x, y, waypointX, waypointY });
+
+  const move = (op, value) => {
+    operations[op](value);
+  };
+
+  return { move, getState };
+};
+const moveForPart2 = (orders) => {
+  const navigation = createWaypointNavigation();
+
+  orders.forEach(([op, value]) => {
     navigation.move(op, value);
   })
 
@@ -77,6 +118,7 @@ const moveForPart1 = (orders) => {
 };
 
 const part1 = moveForPart1(input);
+const part2 = moveForPart2(input);
 
 console.log(
 "Part 1: ",
@@ -89,3 +131,19 @@ console.log(
 );
 
 console.log("Part 1: Manhattan distance: ", Math.abs(part1.x) + Math.abs(part1.y));
+
+console.log(
+"Part 2: ",
+  part2.x,
+  part2.x >= 0 ? 'east' : 'west',
+  part2.y,
+  part2.y >= 0 ? 'south' : 'north',
+  'Waypoint:',
+  part2.waypointX,
+  part2.waypointX >= 0 ? 'east' : 'west',
+  part2.waypointY,
+  part2.waypointY >= 0 ? 'south' : 'north',
+);
+
+console.log("Part 2: Manhattan distance: ", Math.abs(part2.x) + Math.abs(part2.y));
+
