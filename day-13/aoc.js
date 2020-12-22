@@ -9,29 +9,73 @@ const tap = (str) => (value) => {
   return value;
 }
 
-const IGNORE_CHAR = 'x';
-const [ timestamp, ids ] = pipe(
-  split('\n'),
-  ([timestampStr, idStr]) => [
-    parseInt(timestampStr, 10),
-    pipe(
-      split(','),
-      filter(value => value !== IGNORE_CHAR),
-      map(value => parseInt(value, 10))
-    )(idStr)
-  ]
-)(readFileSync(0).toString());
+const rawInput = readFileSync(0).toString();
+
+const MIN_VAL = 1e14; // 100_000_000_000_000;
+const BLANK_CHAR = 'x';
+
+const part1 = () => {
+  const [ timestamp, ids ] = pipe(
+    split('\n'),
+    ([timestampStr, idStr]) => [
+      parseInt(timestampStr, 10),
+      pipe(
+        split(','),
+        filter(value => value !== BLANK_CHAR),
+        map(value => parseInt(value, 10))
+      )(idStr)
+    ]
+  )(rawInput);
+
+  const maxValues = ids.map(id => {
+    const divider = Math.ceil(timestamp / id);
+
+    return ({ id, nearest: id * divider });
+  })
 
 
-const maxValues = ids.map(id => {
-  const divider = Math.ceil(timestamp / id);
+  maxValues.sort((a,b) => (a.nearest < b.nearest) ? -1 : 1 )
 
-  return ({ id, nearest: id * divider });
-})
+  const { id, nearest } = maxValues[0];
+
+  console.log("Part 1: ", nearest, id, (nearest - timestamp) * id);
+}
 
 
-maxValues.sort((a,b) => (a.nearest < b.nearest) ? -1 : 1 )
+const part2 = () => {
+  const ids = pipe(
+    split('\n'),
+    ([timestampStr, idStr]) =>
+      pipe(
+        split(','),
+        map(value => value === BLANK_CHAR ? 1 : parseInt(value, 10))
+      )(idStr)
+  )(rawInput);
 
-const { id, nearest } = maxValues[0];
+  const gcd = (a, b) => !b ? a : gcd(b, a % b);
+  const lcm = (a, b) => a === 0 || b === 0 ? 0 : Math.abs((a * b) / gcd(a, b));
 
-console.log("Part 1: ", nearest, id, (nearest - timestamp) * id);
+  const findEarliestConsecutiveTimestamp = (ids) => {
+    let timestamp = 0;
+    let step = ids[0];
+
+    ids.forEach((busId, i) => {
+      if (busId !== 1 && busId !== step) {
+        while ((timestamp + i) % busId !== 0) {
+          timestamp += step;
+        }
+
+        step = lcm(step, busId);
+      }
+    });
+
+    return timestamp;
+  };
+
+  const earliestTimestamp = findEarliestConsecutiveTimestamp(ids);
+
+  console.log("Part 2:", earliestTimestamp);
+}
+
+part1();
+part2();
