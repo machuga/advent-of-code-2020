@@ -11,11 +11,47 @@ const tap = (str) => (value) => {
 }
 
 const BITS = 36;
+const binary = ['0', '1'];
 const memlineRegex = /mem\[(?<address>\d+)\] = (?<value>\d+)/;
 
-const convertToBinaryString = (decimal) => decimal.toString(2).padStart(BITS, '0')
+const convertToBinaryString = (decimal, bits = BITS) => decimal.toString(2).padStart(bits, '0')
+
 const convertToNumber = (binaryString) => parseInt(binaryString, 2);
+
 const applyMask = (mask, num) => num.split('').map((bit, index) => mask[index] === 'X' ? bit : mask[index]).join('');
+
+const applyMaskToAll = (mask, address) => {
+  const initialMasking = address.split('').map((bit, index) => mask[index] !== '0' ? mask[index] : bit).join('');
+
+  const floaters = initialMasking.split('').reduce((acc, bit, index) => {
+    if (bit === 'X') {
+      acc.push(index);
+    }
+
+    return acc;
+  }, []);
+
+  if (floaters.length === 0) {
+    return [initialMasking];
+  }
+
+  const floaterCount = Math.pow(2, floaters.length);
+
+  const addresses = [];
+
+  for (let i = 0; i < floaterCount; i++) {
+    const binaryString = convertToBinaryString(i, floaters.length);
+    const concreteAddress = initialMasking.split('');
+
+    binaryString.split('').forEach((bit, index) => {
+      concreteAddress[floaters[index]] = bit;
+    });
+
+    addresses.push(concreteAddress.join(''));
+  }
+
+  return addresses;
+}
 
 const extractAssignment = line => {
   const { address, value } = line && line.match(memlineRegex).groups || {};
@@ -53,7 +89,7 @@ const partitionInput = pipe(
 )(readFileSync(0).toString());
 
 const part1 = () => {
-  const input = pipe(
+  pipe(
     reduce((addresses, { mask, assignments }) => {
       assignments.forEach(({ address, value }) => {
         addresses[address] = applyMask(mask, convertToBinaryString(value));
@@ -67,4 +103,25 @@ const part1 = () => {
   )(partitionInput);
 }
 
+const part2 = () => {
+  pipe(
+    reduce((addresses, { mask, assignments }) => {
+      assignments.forEach(({ address, value }) => {
+        const maskedAddresses = applyMaskToAll(mask, convertToBinaryString(address));
+
+        maskedAddresses.forEach((maskedAddress) => {
+          addresses[maskedAddress] = value;
+        });
+      });
+
+      return addresses;
+    }, { }),
+    Object.values,
+    reduce((sum, value) => sum + value, 0),
+    tap("Part 2: Sum of all memory addresses")
+  )(partitionInput);
+}
+
 part1();
+part2();
+
