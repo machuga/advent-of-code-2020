@@ -1,64 +1,42 @@
 const { readFileSync } = require('fs');
 
 const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x)
-const filter = (callback) => (arr) => arr.filter(callback);
 const map = (callback) => (arr) => arr.map(callback);
 const reduce = (callback, init) => (arr) => arr.reduce(callback, init);
 const split = (char) => (str) => str.split(char);
-const slice = (start, end = undefined) => (arr) => arr.slice(start, end);
 const tap = (str) => (value) => {
   console.log(str, value);
   return value;
 }
 
-/**
- *
- * If latest number has never occured before, next number is 0
- * If latest number
- *
- * { number, lastSaid }
- * turns: [0,3,6,0,4]
- *
- *
- */
-
-const emptyTurns = [];
-const calculateNextTurnFrom = (turnsNumberSaidOn) => pipe(
-  ([secondMostRecent, mostRecent]) => mostRecent - secondMostRecent,
-)(turnsNumberSaidOn)
-
-const rotateMostRecentTurns = (turns, newTurn) => turns.length < 2 ? [...turns, newTurn] : [turns[turns.length - 1], newTurn];
-
-const until = (maxNumber) => (startingTurns = []) => {
+const until = (maxNumber) => (startingNumbers = []) => {
   const upperLimit = maxNumber - 1;
-  const lookup = new Map();
-  let lastTurn;
-  let lastSaid = startingTurns[startingTurns.length - 1];
-  let turn = startingTurns.length;
+  const storage = new Map();
+  let turn = 1;
+  let lastNumber;
+  let currentNumber;
 
   // Initialize data structure
-  startingTurns.forEach((number, index) => {
-    lookup.set(number, [index + 1]);
+  startingNumbers.forEach((number, index) => {
+    storage.set(number, turn);
+    lastNumber = number;
+    turn += 1;
   });
 
-  while (turn <= upperLimit) {
-    turn += 1;
 
-    lastSaid = lookup.get(lastTurn) || emptyTurns;
-
-    let nextTurn;
-
-    if (lastSaid.length < 2) {
-      nextTurn = 0;
+  while (turn <= maxNumber) {
+    if (storage.has(lastNumber)) {
+      currentNumber = turn - 1 - storage.get(lastNumber);
     } else {
-      nextTurn = calculateNextTurnFrom(lookup.get(lastTurn));
+      currentNumber = 0;
     }
 
-    lookup.set(nextTurn, rotateMostRecentTurns(lookup.get(nextTurn) || emptyTurns, turn));
-    lastTurn = nextTurn;
+    storage.set(lastNumber, turn - 1);
+    lastNumber = currentNumber;
+    turn += 1;
   }
 
-  return lastTurn;
+  return lastNumber;
 }
 
 const turns = pipe(
@@ -70,7 +48,7 @@ const part1 = () => {
   pipe(
     tap("Part 1: "),
     until(2020),
-    (lastTurn) => { console.log("The final turn was", lastTurn) }
+    (lastNumber) => { console.log("The final turn was", lastNumber) }
   )(turns);
 }
 
@@ -78,10 +56,9 @@ const part2 = () => {
   pipe(
     tap("Part 2: "),
     until(30_000_000),
-    (lastTurn) => { console.log("The final turn was", lastTurn) }
+    (lastNumber) => { console.log("The final turn was", lastNumber) }
   )(turns);
 }
 
 part1();
 part2();
-
