@@ -5,6 +5,7 @@ const map = (callback) => (arr) => arr.map(callback);
 const reduce = (callback, init) => (arr) => arr.reduce(callback, init);
 const filter = (callback) => (arr) => arr.filter(callback);
 const split = (char) => (str) => str.split(char);
+const startsWith = (char) => (str) => str.startsWith(char);
 const tap = (str) => (value) => {
   console.log(str, value);
   return value;
@@ -65,11 +66,64 @@ const part1 = () => {
   )(input);
 }
 
+
+const transpose = (tickets) => tickets[0].map((_, col) => tickets.map(row => row[col]) );
+
+
+
+
 const part2 = () => {
+  const map = (rules, ticketValues) => ticketValues.map(isInvalid(rules))
+
+  const filterOnlyValidTickets = ({ rules, nearbyTickets }) =>
+    nearbyTickets.filter((ticket) => findInvalidTicketValues(rules)(ticket).length === 0);
+
+  const validTickets = filterOnlyValidTickets(input);
+
+  const isInvalid = (rules) => (value) => !rules.some((rule) => rule.ranges.some(inRange(value)));
   pipe(
+    ({ rules, ownTicket, nearbyTickets }) => ({
+      rules,
+      ownTicket,
+      validTickets: filterOnlyValidTickets({ nearbyTickets, rules }),
+    }),
+    ({ rules, ownTicket, validTickets }) => {
+      const fields = transpose(validTickets);
+      const findInvalidValues = findInvalidTicketValues(rules);
+
+      const mapped = fields.map((fieldRow, rowIndex) => {
+        return rules.reduce((acc, { field, ranges }) => {
+          if (fieldRow.every(value => ranges.some((range) => {
+            return inRange(value)(range)
+          }))) {
+            acc.push({ field, rowIndex, fieldRow: JSON.stringify(fieldRow) });
+          }
+
+          return acc;
+        }, []);
+      }).sort((a, b) => a < b ? -1 : 1);
+
+      const grouped = mapped.reduce((grouped, fieldRows)=> {
+        const potentialFieldRows = fieldRows.filter(fieldRow => !grouped.has(fieldRow.field));
+
+        if (potentialFieldRows.length === 1) {
+          grouped.set(potentialFieldRows[0].field, potentialFieldRows[0].rowIndex);
+        }
+
+        return grouped;
+      }, new Map());
+
+      const departureKeys = pipe(
+        Array.from,
+        filter(startsWith('departure')),
+        reduce((acc, key) => acc * ownTicket[grouped.get(key)], 1),
+      )(grouped.keys());
+
+      return departureKeys;
+    },
     tap("Part 2: "),
   )(input);
 }
 
 part1();
-//part2();
+part2();
